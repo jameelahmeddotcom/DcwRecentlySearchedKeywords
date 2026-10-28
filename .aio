@@ -1,0 +1,55 @@
+{
+  "project": {
+    "id": "4566206088345786764",
+    "name": "DcwRecentlySearchedK",
+    "title": "DcwRecentlySearchedKeywords",
+    "description": "Created by Commerce Developer Agent",
+    "org": {
+      "id": "1890365",
+      "name": "Dotcomweavers Partners Sandbox",
+      "ims_org_id": "C19C1D9B65BA04E70A495C6B@AdobeOrg"
+    },
+    "workspace": {
+      "id": "4566206088345836233",
+      "name": "Stage",
+      "title": "Stage",
+      "action_url": "https://1890365-dcwrecentlysearchedk-stage.adobeioruntime.net",
+      "app_url": "https://1890365-dcwrecentlysearchedk-stage.adobeio-static.net",
+      "details": {
+        "credentials": [
+          {
+            "id": "1058422",
+            "name": "CDA-45836233",
+            "integration_type": "oauth_server_to_server"
+          }
+        ],
+        "services": [
+          {
+            "code": "ACCS-REST-API",
+            "name": "Adobe Commerce as a Cloud Service"
+          },
+          {
+            "code": "AdobeIOManagementAPISDK",
+            "name": "I/O Management API"
+          },
+          {
+            "code": "CloudIntegrationSDK",
+            "name": "I/O Events"
+          },
+          {
+            "code": "AppBuilderDataServicesSDK",
+            "name": "App Builder Data Services"
+          },
+          {
+            "code": "commerceeventing",
+            "name": "Adobe I/O Events for Adobe Commerce"
+          }
+        ],
+        "events": {
+          "registrations": []
+        },
+        "mesh": {}
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "adminUi": {
+    "menu": {
+      "aclProtected": true,
+      "description": "Search history across customers",
+      "id": "search_keyword_history",
+      "label": "Search Keyword History",
+      "parentMenu": "customers"
+    }
+  },
+  "installation": {
+    "customInstallationSteps": [
+      {
+        "description": "Creates search_keywords and indexes customerId",
+        "name": "Set up search keywords collection",
+        "script": "./scripts/setup-database.ts"
+      }
+    ]
+  },
+  "metadata": {
+    "description": "Persists authenticated customer search keyword history in App Builder Database Storage, exposes save/retrieve APIs for the Luma storefront module, and surfaces a Commerce Admin grid of search keyword history.",
+    "displayName": "Search Keyword History",
+    "id": "search-keyword-history",
+    "upgradeMode": "manual",
+    "version": "1.0.0"
+  }
+}

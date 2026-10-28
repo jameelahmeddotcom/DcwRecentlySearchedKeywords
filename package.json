@@ -1,0 +1,57 @@
+{
+  "name": "search-keyword-history",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@adobe/aio-commerce-lib-admin-ui": "^1.1.0",
+    "@adobe/aio-commerce-lib-app": "^2.0.0",
+    "@adobe/aio-commerce-lib-auth": "^1.1.3",
+    "@adobe/aio-commerce-lib-config": "1.8.0",
+    "@adobe/aio-commerce-sdk": "^2.0.0",
+    "@adobe/aio-lib-db": "^1.0.4",
+    "@adobe/aio-lib-state": "^5.4.0",
+    "@ljharb/tsconfig": "^0.2.3",
+    "@react-spectrum/s2": "^1.5.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "ts-loader": "^9.6.2",
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/preset-react": "^7.29.7",
+    "@tsconfig/bases": "^1.0.28",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "vitest": "^5.0.5"
+  },
+  "description": "Persists authenticated customer search keyword history in App Builder Database Storage, exposes save/retrieve APIs for the Luma storefront module, and surfaces a Commerce Admin grid of search keyword history.",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck:actions": "tsc --noEmit -p tsconfig.json",
+    "typecheck:web-src": "tsc --noEmit -p src/commerce-backend-ui-2/web-src/tsconfig.json",
+    "typecheck": "npm run typecheck:actions && npm run typecheck:web-src",
+    "postinstall": "node scripts/patch-commerce-hooks.js && npx aio-commerce-lib-app hooks postinstall"
+  },
+  "imports": {
+    "#app.commerce.config": "./src/commerce-extensibility-1/.generated/app.commerce.config.js",
+    "#web/*": "./src/commerce-backend-ui-2/web-src/src/*"
+  },
+  "@parcel/bundler-default": {
+    "manualSharedBundles": [
+      {
+        "assets": [
+          "**/@react-spectrum/s2/**",
+          "src/commerce-backend-ui-2/web-src/*.{js,jsx,ts,tsx}"
+        ],
+        "name": "s2-styles",
+        "types": [
+          "css"
+        ]
+      }
+    ]
+  },
+  "@parcel/resolver-default": {
+    "packageExports": true
+  }
+}

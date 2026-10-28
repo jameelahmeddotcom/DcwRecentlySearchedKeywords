@@ -1,0 +1,15 @@
+application:
+  hooks:
+    post-app-build: node scripts/ensure-actions-dir.js
+  runtimeManifest:
+    packages: {}
+    database:
+      auto-provision: true
+      region: amer
+extensions:
+  commerce/extensibility/1:
+    $include: src/commerce-extensibility-1/ext.config.yaml
+
+  # This extension is required for Admin UI. Do not remove.
+  commerce/backend-ui/2:
+    $include: src/commerce-backend-ui-2/ext.config.yaml

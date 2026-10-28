@@ -1,0 +1,29 @@
+web: web-src
+hooks:
+  pre-app-build: node scripts/run-commerce-hook.js backend-ui/2 pre-app-build
+  pre-app-dev: node scripts/run-commerce-hook.js backend-ui/2 pre-app-dev
+  pre-app-run: node scripts/run-commerce-hook.js backend-ui/2 pre-app-run
+operations:
+  view:
+    - type: web
+      impl: index.html
+runtimeManifest:
+  packages:
+    search-history-admin:
+      actions:
+        get-search-keywords-admin:
+          function: actions/get-search-keywords-admin/index.ts
+          runtime: nodejs:24
+          web: 'yes'
+          inputs:
+            LOG_LEVEL: $LOG_LEVEL
+            AIO_COMMERCE_AUTH_IMS_CLIENT_ID: $AIO_COMMERCE_AUTH_IMS_CLIENT_ID
+            AIO_COMMERCE_AUTH_IMS_CLIENT_SECRETS: $AIO_COMMERCE_AUTH_IMS_CLIENT_SECRETS
+            AIO_COMMERCE_AUTH_IMS_TECHNICAL_ACCOUNT_ID: $AIO_COMMERCE_AUTH_IMS_TECHNICAL_ACCOUNT_ID
+            AIO_COMMERCE_AUTH_IMS_TECHNICAL_ACCOUNT_EMAIL: $AIO_COMMERCE_AUTH_IMS_TECHNICAL_ACCOUNT_EMAIL
+            AIO_COMMERCE_AUTH_IMS_ORG_ID: $AIO_COMMERCE_AUTH_IMS_ORG_ID
+            AIO_COMMERCE_AUTH_IMS_SCOPES: $AIO_COMMERCE_AUTH_IMS_SCOPES
+          annotations:
+            final: true
+            require-adobe-auth: true
+            include-ims-credentials: true
