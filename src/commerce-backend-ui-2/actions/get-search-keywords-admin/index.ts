@@ -19,7 +19,12 @@ export async function main(params: Record<string, unknown>) {
   try {
     const result = await withDatabase(params, trace, async (client) => {
       const collection = client.collection('search_keywords');
-      const filter = guest ? { guest: true } : email ? { customerEmail: email } : id === undefined ? {} : { customerId: id };
+      const keywordTerm = typeof params.keyword === 'string' ? params.keyword.trim().slice(0, 255) : '';
+      const keywordClause = keywordTerm
+        ? { keyword: { $regex: keywordTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } }
+        : null;
+      const owner = guest ? { guest: true } : email ? { customerEmail: email } : id === undefined ? {} : { customerId: id };
+      const filter = keywordClause ? { ...owner, ...keywordClause } : owner;
       const totalCount = await retry(() => collection.countDocuments(filter));
       const documents = await retry(() => collection.find(filter).sort({ [sortFields[sortName]]: direction, _id: direction }).skip((paging.page - 1) * paging.pageSize).limit(paging.pageSize).project({ _id: 0, customerId: 1, customerEmail: 1, guest: 1, keyword: 1, searchedAt: 1 }).toArray());
       return { items: documents.map((doc) => ({ customerId: doc.customerId, customerEmail: doc.customerEmail, guest: doc.guest === true, keyword: doc.keyword, searchedAt: doc.searchedAt })), ...paging, totalCount };

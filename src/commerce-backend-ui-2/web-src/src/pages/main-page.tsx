@@ -1,55 +1,54 @@
 import { useEffect, useState } from 'react';
-import type { SortDescriptor } from '@react-spectrum/s2';
-import {
-  Button,
-  Cell,
-  Column,
-  Content,
-  Heading,
-  IllustratedMessage,
-  InlineAlert,
-  Picker,
-  PickerItem,
-  Row,
-  SearchField,
-  TableBody,
-  TableHeader,
-  TableView,
-  Text,
-} from '@react-spectrum/s2';
-import NoSearchResults from '@react-spectrum/s2/illustrations/linear/NoSearchResults';
 import { useIms } from '@adobe/aio-commerce-lib-admin-ui/web';
 import { useConfig } from '../hooks/use-config.js';
+import './main-page.css';
 
-type Item = {
-  id: string;
-  customer: string;
-  keyword: string;
-  date: string;
-};
-type Page = {
-  items: Array<{ customerId?: number; customerEmail?: string; guest?: boolean; keyword: string; searchedAt: string }>;
-  page: number;
-  pageSize: number;
-  totalCount: number;
-};
+type ColumnId = 'customer' | 'keyword' | 'searchedAt';
+type Row = { customerId?: number; customerEmail?: string; guest?: boolean; keyword: string; searchedAt: string };
+type Page = { items: Row[]; page: number; pageSize: number; totalCount: number };
 
-const PAGE_SIZES = [20, 50, 100];
+const COLUMNS: Array<{ id: ColumnId; label: string }> = [
+  { id: 'customer', label: 'Customer' },
+  { id: 'keyword', label: 'Keyword' },
+  { id: 'searchedAt', label: 'Date' },
+];
+const PAGE_SIZES = [20, 30, 50, 100];
 
-function customerLabel(item: Page['items'][number]) {
+function customerLabel(item: Row) {
   if (item.customerEmail) return item.customerEmail;
   if (item.customerId) return String(item.customerId);
   return item.guest ? 'Guest' : '';
 }
 
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  }).format(date).replace(/,([^,]*)$/, '$1');
+}
+
 export function MainPage() {
   const { data: ims, error: imsError } = useIms();
   const { getActionUrl } = useConfig();
-  const [customerFilter, setCustomerFilter] = useState('');
-  const [appliedFilter, setAppliedFilter] = useState('');
+  const [keyword, setKeyword] = useState('');
+  const [appliedKeyword, setAppliedKeyword] = useState('');
+  const [customer, setCustomer] = useState('');
+  const [appliedCustomer, setAppliedCustomer] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const [visible, setVisible] = useState<Record<ColumnId, boolean>>({ customer: true, keyword: true, searchedAt: true });
   const [page, setPage] = useState(1);
+  const [pageInput, setPageInput] = useState('1');
   const [pageSize, setPageSize] = useState(20);
-  const [sort, setSort] = useState<SortDescriptor>({ column: 'searchedAt', direction: 'descending' });
+  const [sortColumn, setSortColumn] = useState<ColumnId>('searchedAt');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [result, setResult] = useState<Page | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -62,9 +61,10 @@ export function MainPage() {
     const url = new URL(getActionUrl('search-history-admin/get-search-keywords-admin'));
     url.searchParams.set('page', String(page));
     url.searchParams.set('pageSize', String(pageSize));
-    url.searchParams.set('sort', String(sort.column));
-    url.searchParams.set('dir', sort.direction === 'ascending' ? 'asc' : 'desc');
-    if (appliedFilter) url.searchParams.set('customerId', appliedFilter);
+    url.searchParams.set('sort', sortColumn);
+    url.searchParams.set('dir', sortDir);
+    if (appliedKeyword) url.searchParams.set('keyword', appliedKeyword);
+    if (appliedCustomer) url.searchParams.set('customerId', appliedCustomer);
     fetch(url, {
       signal: controller.signal,
       headers: { authorization: `Bearer ${ims.imsToken}`, 'x-gw-ims-org-id': ims.imsOrgId },
@@ -76,6 +76,7 @@ export function MainPage() {
       .then((value) => {
         if (!controller.signal.aborted) {
           setResult(value);
+          setPageInput(String(value.page));
           setLoading(false);
         }
       })
@@ -86,102 +87,183 @@ export function MainPage() {
         }
       });
     return () => controller.abort();
-  }, [ims?.imsToken, ims?.imsOrgId, getActionUrl, page, pageSize, appliedFilter, sort]);
+  }, [ims?.imsToken, ims?.imsOrgId, getActionUrl, page, pageSize, appliedKeyword, appliedCustomer, sortColumn, sortDir]);
 
   const total = result?.totalCount ?? 0;
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  const rows: Item[] = (result?.items ?? []).map((item, index) => ({
-    id: `${customerLabel(item)}-${item.searchedAt}-${index}`,
-    customer: customerLabel(item),
-    keyword: item.keyword,
-    date: new Date(item.searchedAt).toLocaleString(),
-  }));
+  const shown = COLUMNS.filter((column) => visible[column.id]);
+  const filterCount = appliedCustomer ? 1 : 0;
 
-  function applyFilter(value: string) {
+  function search(value: string) {
     setPage(1);
-    setAppliedFilter(value.trim());
+    setAppliedKeyword(value.trim());
+  }
+
+  function sortBy(column: ColumnId) {
+    setPage(1);
+    if (sortColumn === column) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    else {
+      setSortColumn(column);
+      setSortDir('asc');
+    }
+  }
+
+  function goToPage(value: string) {
+    const next = Number(value);
+    if (!Number.isInteger(next) || next < 1 || next > pages) {
+      setPageInput(String(page));
+      return;
+    }
+    setPage(next);
   }
 
   return (
-    <main style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100vh', boxSizing: 'border-box', padding: 24 }}>
-      <Heading level={1}>Search Keyword History</Heading>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'end' }}>
-        <SearchField
-          label="Customer"
-          placeholder="ID, email, or Guest"
-          value={customerFilter}
-          onChange={(value) => {
-            setCustomerFilter(value);
-            if (!value.trim()) applyFilter('');
-          }}
-          onSubmit={applyFilter}
-        />
-        <Button variant="secondary" onPress={() => applyFilter(customerFilter)}>Filter</Button>
+    <main className="admin-grid">
+      <h1 className="admin-grid__title">Search Keyword History</h1>
+      {imsError && <p className="admin-grid__message" role="alert">Admin authentication unavailable.</p>}
+      {error && <p className="admin-grid__message" role="alert">{error}</p>}
+      <div className="admin-grid__toolbar">
+        <form className="admin-grid__search" onSubmit={(event) => { event.preventDefault(); search(keyword); }}>
+          <input
+            aria-label="Search by keyword"
+            placeholder="Search by keyword"
+            value={keyword}
+            onChange={(event) => {
+              setKeyword(event.target.value);
+              if (!event.target.value.trim()) search('');
+            }}
+          />
+          <button type="submit" aria-label="Search">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M10.5 10.5 L14 14" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+          </button>
+        </form>
+        <div className="admin-grid__tools">
+          <button type="button" className="admin-grid__action" aria-expanded={filtersOpen} onClick={() => { setFiltersOpen(!filtersOpen); setColumnsOpen(false); }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M2 3h12l-4.5 5.2V13l-3 1.2V8.2L2 3z" fill="none" stroke="currentColor" strokeWidth="1.4" />
+            </svg>
+            Filters{filterCount ? ` (${filterCount})` : ''}
+          </button>
+          <div className="admin-grid__menu-wrap">
+            <button type="button" className="admin-grid__action" aria-expanded={columnsOpen} onClick={() => { setColumnsOpen(!columnsOpen); setFiltersOpen(false); }}>
+              <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+                <circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M8 2.2v1.6M8 12.2v1.6M2.2 8h1.6M12.2 8h1.6M3.8 3.8l1.1 1.1M11.1 11.1l1.1 1.1M3.8 12.2l1.1-1.1M11.1 4.9l1.1-1.1" fill="none" stroke="currentColor" strokeWidth="1.3" />
+              </svg>
+              Columns
+            </button>
+            {columnsOpen && (
+              <div className="admin-grid__menu" role="group" aria-label="Columns">
+                {COLUMNS.map((column) => (
+                  <label key={column.id}>
+                    <input
+                      type="checkbox"
+                      checked={visible[column.id]}
+                      onChange={() => {
+                        const enabled = shown.length;
+                        if (visible[column.id] && enabled === 1) return;
+                        setVisible({ ...visible, [column.id]: !visible[column.id] });
+                      }}
+                    />
+                    {column.label}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-      {imsError && (
-        <InlineAlert variant="negative">
-          <Heading>Admin authentication unavailable.</Heading>
-        </InlineAlert>
-      )}
-      {error && (
-        <InlineAlert variant="negative">
-          <Heading>Could not load search history</Heading>
-          <Content>{error}</Content>
-        </InlineAlert>
-      )}
-      <TableView
-        aria-label="Search keyword history"
-        density="compact"
-        overflowMode="wrap"
-        sortDescriptor={sort}
-        onSortChange={(descriptor) => {
-          setSort(descriptor);
-          setPage(1);
-        }}
-        loadingState={loading ? 'loading' : 'idle'}
-        UNSAFE_style={{ width: '100%', height: 'calc(100vh - 240px)', minHeight: 320 }}
-      >
-        <TableHeader>
-          <Column id="customer" isRowHeader allowsSorting width={280}>Customer</Column>
-          <Column id="keyword" allowsSorting>Keyword</Column>
-          <Column id="searchedAt" allowsSorting width={220}>Date</Column>
-        </TableHeader>
-        <TableBody
-          items={rows}
-          renderEmptyState={() => (
-            <IllustratedMessage size="S">
-              <NoSearchResults />
-              <Heading>No search keywords found</Heading>
-              <Content>Searches from the storefront will appear in this grid.</Content>
-            </IllustratedMessage>
-          )}
+      {filtersOpen && (
+        <form
+          className="admin-grid__filters"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setPage(1);
+            setAppliedCustomer(customer.trim());
+          }}
         >
-          {(item) => (
-            <Row>
-              <Cell>{item.customer}</Cell>
-              <Cell>{item.keyword}</Cell>
-              <Cell>{item.date}</Cell>
-            </Row>
-          )}
-        </TableBody>
-      </TableView>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-        <Text>{total} records found</Text>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Picker
-            label="Per page"
-            selectedKey={String(pageSize)}
-            onSelectionChange={(key) => {
-              setPageSize(Number(key));
+          <label>
+            Customer
+            <input
+              value={customer}
+              placeholder="ID, email, or Guest"
+              onChange={(event) => setCustomer(event.target.value)}
+            />
+          </label>
+          <button type="submit">Apply Filters</button>
+          <button
+            type="button"
+            onClick={() => {
+              setCustomer('');
+              setAppliedCustomer('');
               setPage(1);
             }}
           >
-            {PAGE_SIZES.map((size) => <PickerItem key={size} id={String(size)}>{size}</PickerItem>)}
-          </Picker>
-          <Button variant="secondary" isDisabled={page <= 1 || loading} onPress={() => setPage(page - 1)}>Previous</Button>
-          <Text>{page} of {pages}</Text>
-          <Button variant="secondary" isDisabled={page >= pages || loading} onPress={() => setPage(page + 1)}>Next</Button>
+            Clear all
+          </button>
+        </form>
+      )}
+      <div className="admin-grid__controls">
+        <p className="admin-grid__count">{loading && !result ? 'Loading…' : `${total} records found`}</p>
+        <div className="admin-grid__pager">
+          <select
+            aria-label="Per page"
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setPage(1);
+            }}
+          >
+            {PAGE_SIZES.map((size) => <option key={size} value={size}>{size}</option>)}
+          </select>
+          <span>per page</span>
+          <button type="button" aria-label="Previous page" disabled={page <= 1 || loading} onClick={() => setPage(page - 1)}>‹</button>
+          <input
+            aria-label="Current page"
+            inputMode="numeric"
+            value={pageInput}
+            onChange={(event) => setPageInput(event.target.value)}
+            onBlur={() => goToPage(pageInput)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') goToPage(pageInput);
+            }}
+          />
+          <span>of {pages}</span>
+          <button type="button" aria-label="Next page" disabled={page >= pages || loading} onClick={() => setPage(page + 1)}>›</button>
         </div>
+      </div>
+      <div className="admin-grid__table-wrap" data-loading={loading ? 'true' : 'false'}>
+        <table>
+          <thead>
+            <tr>
+              {shown.map((column) => (
+                <th key={column.id} aria-sort={sortColumn === column.id ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button type="button" onClick={() => sortBy(column.id)}>
+                    {column.label}
+                    {sortColumn === column.id && <span aria-hidden="true">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                  </button>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {!loading && result?.items.length === 0 && (
+              <tr>
+                <td className="admin-grid__empty" colSpan={shown.length}>We couldn&apos;t find any records.</td>
+              </tr>
+            )}
+            {result?.items.map((item, index) => (
+              <tr key={`${customerLabel(item)}-${item.keyword}-${item.searchedAt}-${index}`}>
+                {visible.customer && <td>{customerLabel(item)}</td>}
+                {visible.keyword && <td>{item.keyword}</td>}
+                {visible.searchedAt && <td>{formatDate(item.searchedAt)}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </main>
   );
