@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useIms } from '@adobe/aio-commerce-lib-admin-ui/web';
 import { useConfig } from '../hooks/use-config.js';
 
-type Item = { customerId?: number; customerEmail?: string; keyword: string; searchedAt: string };
+type Item = { customerId?: number; customerEmail?: string; guest?: boolean; keyword: string; searchedAt: string };
 type Page = { items: Item[]; page: number; pageSize: number; totalCount: number };
 export function MainPage() {
   const { data: ims, error: imsError } = useIms();
@@ -40,7 +40,7 @@ export function MainPage() {
     {loading && <p role="status">Loading…</p>}
     <table style={{ width: '100%', textAlign: 'left', marginTop: 16 }}>
       <thead><tr><th scope="col">Customer</th><th scope="col">Keyword</th><th scope="col">Date</th></tr></thead>
-      <tbody>{result?.items.map((item, index) => <tr key={`${item.customerEmail || item.customerId}-${item.searchedAt}-${index}`}><td>{item.customerEmail || item.customerId}</td><td>{item.keyword}</td><td>{new Date(item.searchedAt).toLocaleString()}</td></tr>)}</tbody>
+      <tbody>{result?.items.map((item, index) => <tr key={`${item.customerEmail || item.customerId}-${item.searchedAt}-${index}`}><td>{item.customerEmail || item.customerId || (item.guest ? 'Guest' : '')}</td><td>{item.keyword}</td><td>{new Date(item.searchedAt).toLocaleString()}</td></tr>)}</tbody>
     </table>
     {!loading && result?.items.length === 0 && <p>No search keywords found.</p>}
     <nav aria-label="Search history pages" style={{ marginTop: 16 }}>

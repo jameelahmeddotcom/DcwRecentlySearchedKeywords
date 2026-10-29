@@ -16,6 +16,14 @@ describe('save action', () => {
     expect(insertOne).toHaveBeenCalledWith(expect.objectContaining({ customerId: 12, keyword: 'boots' }));
     expect(deleteOne).toHaveBeenCalledWith({ _id: 'old', customerId: 12 });
   });
+  it('stores a guest search when no customer is known', async () => {
+    vi.mocked(init).mockResolvedValue({ put: vi.fn().mockResolvedValue('claimed') } as never);
+    const insertOne = vi.fn();
+    vi.mocked(withDatabase).mockImplementation(async (_p, _t, work) => work({ collection: () => ({ insertOne, find: () => ({ sort: () => ({ skip: () => ({ project: () => ({ toArray: async () => [] }) }) }) }), deleteOne: vi.fn() }) } as never));
+    const result = await main({ ...base, __ow_body: JSON.stringify({ keyword: 'ball' }) });
+    expect(result.statusCode).toBe(201);
+    expect(insertOne).toHaveBeenCalledWith(expect.objectContaining({ guest: true, keyword: 'ball' }));
+  });
   it('rejects unauthenticated and invalid requests', async () => {
     expect((await main({ ...base, __ow_headers: {} })).statusCode).toBe(401);
     expect((await main({ ...base, __ow_body: '{}' })).statusCode).toBe(400);

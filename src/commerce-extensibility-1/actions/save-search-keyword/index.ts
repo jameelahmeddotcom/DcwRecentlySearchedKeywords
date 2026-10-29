@@ -15,9 +15,9 @@ export async function main(params: Record<string, unknown>) {
   const id = customerId(body?.customerId);
   const email = customerEmail(body?.customerEmail);
   const term = keyword(body?.keyword);
-  const owner = ownerFilter(id, email);
-  if (!owner || term === null) return reply(400, { error: 'invalid_input' });
-  const key = `search.${email || id}.${createHash('sha256').update(term).digest('hex')}`;
+  if (term === null) return reply(400, { error: 'invalid_input' });
+  const owner = ownerFilter(id, email) ?? { guest: true };
+  const key = `search.${email || id || 'guest'}.${createHash('sha256').update(term).digest('hex')}`;
   let state: Awaited<ReturnType<typeof initState>> | undefined;
   let claimed = false;
   try {
@@ -28,7 +28,13 @@ export async function main(params: Record<string, unknown>) {
     await withDatabase(params, trace, async (client) => {
       const write = async () => {
         const collection = client.collection('search_keywords');
-        const document = { ...(id !== null ? { customerId: id } : {}), ...(email ? { customerEmail: email } : {}), keyword: term, searchedAt };
+        const document = {
+          ...(id !== null ? { customerId: id } : {}),
+          ...(email ? { customerEmail: email } : {}),
+          ...(id === null && !email ? { guest: true } : {}),
+          keyword: term,
+          searchedAt,
+        };
         await retry(() => collection.insertOne(document));
         const stale = await retry(() => collection.find(owner).sort({ searchedAt: -1, _id: -1 }).skip(100).project({ _id: 1 }).toArray());
         for (const doc of stale) await retry(() => collection.deleteOne({ _id: doc._id, ...owner }));
