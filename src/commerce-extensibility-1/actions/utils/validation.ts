@@ -42,11 +42,11 @@ export function keyword(value: unknown): string | null {
   const cleaned = value.trim();
   return cleaned.length > 0 && cleaned.length <= 255 ? cleaned : null;
 }
-export function pagination(params: Record<string, unknown>, defaultSize = 20) {
+export function pagination(params: Record<string, unknown>, defaultSize = 20, maxSize = 20) {
   const parse = (value: unknown, fallback: number) => value === undefined ? fallback :
     (typeof value === 'number' || typeof value === 'string' && /^[1-9]\d*$/.test(value)) ? Number(value) : NaN;
   const page = parse(params.page, 1); const pageSize = parse(params.pageSize, defaultSize);
-  if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 20 || (page - 1) * pageSize > Number.MAX_SAFE_INTEGER) return null;
+  if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > maxSize || (page - 1) * pageSize > Number.MAX_SAFE_INTEGER) return null;
   return { page, pageSize };
 }
 export function bodyParams(params: Record<string, unknown>): Record<string, unknown> | null {
