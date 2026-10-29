@@ -23,6 +23,12 @@ describe('admin read action', () => {
     expect((await main({ __ow_method: 'get', pageSize: 200 })).statusCode).toBe(400);
     expect((await main({ __ow_method: 'get', customerId: '-2' })).statusCode).toBe(400);
   });
+  it('filters by keyword without treating punctuation as a pattern', async () => {
+    const find = vi.fn().mockReturnValue({ sort: () => ({ skip: () => ({ limit: () => ({ project: () => ({ toArray: async () => [] }) }) }) }) });
+    vi.mocked(withDatabase).mockImplementation(async (_p, _t, work) => work({ collection: () => ({ countDocuments: async () => 0, find }) } as never));
+    await main({ __ow_method: 'get', keyword: 'bo.ots' });
+    expect(find).toHaveBeenCalledWith({ keyword: { $regex: 'bo\\.ots', $options: 'i' } });
+  });
   it('responds to database failure without leaking details', async () => {
     vi.mocked(withDatabase).mockRejectedValue(new Error('credentials'));
     const result = await main({ __ow_method: 'get' });
