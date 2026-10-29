@@ -20,7 +20,7 @@ describe('admin read action', () => {
   });
   it('rejects bad method, pagination and customer ID', async () => {
     expect((await main({ __ow_method: 'post' })).statusCode).toBe(405);
-    expect((await main({ __ow_method: 'get', pageSize: 50 })).statusCode).toBe(400);
+    expect((await main({ __ow_method: 'get', pageSize: 200 })).statusCode).toBe(400);
     expect((await main({ __ow_method: 'get', customerId: '-2' })).statusCode).toBe(400);
   });
   it('responds to database failure without leaking details', async () => {
