@@ -25,6 +25,18 @@ export function customerId(value: unknown): number | null {
   const n = typeof value === 'string' && /^[1-9]\d*$/.test(value) ? Number(value) : value;
   return typeof n === 'number' && Number.isSafeInteger(n) && n > 0 ? n : null;
 }
+export function customerEmail(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const email = value.trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 255 ? email : null;
+}
+export function ownerFilter(id: number | null, email: string | null): Record<string, unknown> | null {
+  const clauses: Record<string, unknown>[] = [];
+  if (id !== null) clauses.push({ customerId: id });
+  if (email) clauses.push({ customerEmail: email });
+  if (!clauses.length) return null;
+  return clauses.length === 1 ? clauses[0] : { $or: clauses };
+}
 export function keyword(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const cleaned = value.trim();

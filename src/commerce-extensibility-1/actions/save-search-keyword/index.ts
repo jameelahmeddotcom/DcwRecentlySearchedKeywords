@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { init as initState } from '@adobe/aio-lib-state';
-import { authorized, bodyParams, customerId, keyword, preflight, response } from '../utils/validation.js';
+import { authorized, bodyParams, customerEmail, customerId, keyword, ownerFilter, preflight, response } from '../utils/validation.js';
 import { failure, retry, withDatabase } from '../utils/database.js';
 
 export async function main(params: Record<string, unknown>) {
@@ -12,9 +12,12 @@ export async function main(params: Record<string, unknown>) {
   if (params.__ow_method !== 'post') return reply(405, { error: 'method_not_allowed' });
   if (!authorized(params)) return reply(401, { error: 'unauthorized' });
   const body = bodyParams(params);
-  const id = customerId(body?.customerId); const term = keyword(body?.keyword);
-  if (id === null || term === null) return reply(400, { error: 'invalid_input' });
-  const key = `search.${id}.${createHash('sha256').update(term).digest('hex')}`;
+  const id = customerId(body?.customerId);
+  const email = customerEmail(body?.customerEmail);
+  const term = keyword(body?.keyword);
+  const owner = ownerFilter(id, email);
+  if (!owner || term === null) return reply(400, { error: 'invalid_input' });
+  const key = `search.${email || id}.${createHash('sha256').update(term).digest('hex')}`;
   let state: Awaited<ReturnType<typeof initState>> | undefined;
   let claimed = false;
   try {
@@ -25,9 +28,10 @@ export async function main(params: Record<string, unknown>) {
     await withDatabase(params, trace, async (client) => {
       const write = async () => {
         const collection = client.collection('search_keywords');
-        await retry(() => collection.insertOne({ customerId: id, keyword: term, searchedAt }));
-        const stale = await retry(() => collection.find({ customerId: id }).sort({ searchedAt: -1, _id: -1 }).skip(100).project({ _id: 1 }).toArray());
-        for (const doc of stale) await retry(() => collection.deleteOne({ _id: doc._id, customerId: id }));
+        const document = { ...(id !== null ? { customerId: id } : {}), ...(email ? { customerEmail: email } : {}), keyword: term, searchedAt };
+        await retry(() => collection.insertOne(document));
+        const stale = await retry(() => collection.find(owner).sort({ searchedAt: -1, _id: -1 }).skip(100).project({ _id: 1 }).toArray());
+        for (const doc of stale) await retry(() => collection.deleteOne({ _id: doc._id, ...owner }));
       };
       try {
         await write();

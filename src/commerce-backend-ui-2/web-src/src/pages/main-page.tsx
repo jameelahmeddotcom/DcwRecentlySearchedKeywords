@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useIms } from '@adobe/aio-commerce-lib-admin-ui/web';
 import { useConfig } from '../hooks/use-config.js';
 
-type Item = { customerId: number; keyword: string; searchedAt: string };
+type Item = { customerId?: number; customerEmail?: string; keyword: string; searchedAt: string };
 type Page = { items: Item[]; page: number; pageSize: number; totalCount: number };
 export function MainPage() {
   const { data: ims, error: imsError } = useIms();
@@ -31,16 +31,16 @@ export function MainPage() {
   return <main style={{ padding: 24 }}>
     <h1>Search Keyword History</h1>
     <form onSubmit={(event) => { event.preventDefault(); setPage(1); setAppliedFilter(customerFilter.trim()); }}>
-      <label htmlFor="customer-filter">Customer ID </label>
-      <input id="customer-filter" inputMode="numeric" pattern="[0-9]*" value={customerFilter} onChange={(event) => setCustomerFilter(event.target.value)} />
+      <label htmlFor="customer-filter">Customer ID or email </label>
+      <input id="customer-filter" value={customerFilter} onChange={(event) => setCustomerFilter(event.target.value)} />
       <button type="submit">Filter</button>
     </form>
     {imsError && <p role="alert">Admin authentication unavailable.</p>}
     {error && <p role="alert">{error}</p>}
     {loading && <p role="status">Loading…</p>}
     <table style={{ width: '100%', textAlign: 'left', marginTop: 16 }}>
-      <thead><tr><th scope="col">Customer ID</th><th scope="col">Keyword</th><th scope="col">Date</th></tr></thead>
-      <tbody>{result?.items.map((item, index) => <tr key={`${item.customerId}-${item.searchedAt}-${index}`}><td>{item.customerId}</td><td>{item.keyword}</td><td>{new Date(item.searchedAt).toLocaleString()}</td></tr>)}</tbody>
+      <thead><tr><th scope="col">Customer</th><th scope="col">Keyword</th><th scope="col">Date</th></tr></thead>
+      <tbody>{result?.items.map((item, index) => <tr key={`${item.customerEmail || item.customerId}-${item.searchedAt}-${index}`}><td>{item.customerEmail || item.customerId}</td><td>{item.keyword}</td><td>{new Date(item.searchedAt).toLocaleString()}</td></tr>)}</tbody>
     </table>
     {!loading && result?.items.length === 0 && <p>No search keywords found.</p>}
     <nav aria-label="Search history pages" style={{ marginTop: 16 }}>
